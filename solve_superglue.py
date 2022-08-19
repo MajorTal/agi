@@ -16,11 +16,13 @@ def process_datum(idx, question, passage, label):
 
 def main():
     super_glue_metric_boolq = evaluate_load('super_glue', 'boolq') 
-    train_dataset = load_dataset("super_glue", "boolq", split="train")
+    dataset_train = load_dataset("super_glue", "boolq", split="train")
+    dataset_validation = load_dataset("super_glue", "boolq", split="validation")
+    dataset_test = load_dataset("super_glue", "boolq", split="test")
     predictions = []
     references = []
 
-    for datum in train_dataset:
+    for datum in dataset_train:
         prediction, reference = process_datum(**datum)
         predictions.append(prediction)
         references.append(reference)
