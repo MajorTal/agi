@@ -79,8 +79,10 @@ def predict(question, topic, sentence):
     prompt = PROMPT.format(question, topic, sentence)
     res = openai.Completion.create(
                 model="text-davinci-002",
-                prompt=PROMPT,
-                temperature=0,
+                prompt=prompt,
+                temperature=0.3,
+                stop = ["question", "topic", "sentence", "relevant"],
+                # n = 3
             )
     print(res)
     reply = res["choices"][0]["text"].strip().lower() == "y"
