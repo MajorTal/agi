@@ -75,7 +75,7 @@ topic: {}
 sentence: {}
 relevant: """
 
-def predict(question, topic, sentence):
+def predict(question, topic, sentence) -> bool:
     prompt = PROMPT.format(question, topic, sentence)
     res = openai.Completion.create(
                 model="text-davinci-002",
@@ -84,8 +84,8 @@ def predict(question, topic, sentence):
                 stop = ["question", "topic", "sentence", "relevant"],
                 # n = 3
             )
-    print(res)
-    reply = res["choices"][0]["text"].strip().lower() == "y"
+    reply_text = res["choices"][0]["text"].strip().lower()
+    reply = reply_text[0] == "y" if reply_text else False
     return reply
 
 
