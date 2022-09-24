@@ -30,6 +30,10 @@ AWS_SECRET_ACCESS_KEY = os.getenv("aws_secret_access_key")
 ENDPOINT_NAME = 'huggingface-pytorch-inference-2022-09-24-14-34-53-467'
 SESS = sagemaker.Session()
 PREDICTOR = HuggingFacePredictor(endpoint_name=ENDPOINT_NAME, sagemaker_session=SESS)
+
+MY_TWEET_ID = 1573708416224198657
+
+
 def play(url):
     # res = api.update_status("testing 123") # This works
 
@@ -44,28 +48,43 @@ def play(url):
     # res = api.update_status_with_media("t2", 'fake_name.jpg', file=fp, in_reply_to_status_id=res.id)
 
 def get_image_from_url(url):
+    print("getting image")
     response = requests.get(url)
     image = Image.open(BytesIO(response.content))
     return image
 
+
+
 def get_replies():
-    tweet_id = 1573708416224198657
-    name = "taltimes2"
-    user_id = 1397303994612080642
+    # name = "taltimes2"
+    my_user_id = 1397303994612080642
     new_replies = []
     res = api.mentions_timeline()
     for t in res:
-        if t.in_reply_to_status_id == tweet_id:
+        name = t.user.name
+        # print(f"mention by {name}")
+        # print("follows me?", friendship)
+        # print(t.text)
+        # print()
+        if t.in_reply_to_status_id == MY_TWEET_ID:
+            # print("reply")
             reply_id = str(t.id)
-            if reply_id not in data_dict: # new!
+            if reply_id not in data_dict:
+                print("New!")
+                friendship = api.get_friendship(source_id=t.user.id, target_id=my_user_id)[0]
+                following = friendship.following
+                if not following:
+                    print("not following", t.user.screen_name)
+                    break
                 data_dict[reply_id] = True
                 if t.entities:
                     media = t.entities.get("media", [])
                     for med in media:
                         if med['type'] == 'photo': # has picture
                             media_url = med["media_url"]
+                            print(f"{t.id=}  {media_url=}")
                             image =  get_image_from_url(media_url)
-                            new_replies.append((t.id, t.text, image))
+                            new_replies.append((t.user.screen_name, t.id, t.text, image))
                             break
     return new_replies
 
@@ -80,22 +99,31 @@ def get_im2im(an_id, text, init_image):
     image = Image.open(BytesIO(base64.b64decode(imdata)))
     return image
 
-def reply_to_twitter(an_id, an_image):
+def reply_to_twitter(screen_name, an_id, an_image):
     fp = TemporaryFile()
     an_image.save(fp, "PNG")
     fp.seek(0)
-
-    res = api.update_status_with_media("here you go!", 'fake_name.jpg', file=fp, in_reply_to_status_id=an_id)
+    res = api.update_status_with_media(f"@{screen_name} here you are:", 'fake_name.jpg', file=fp, in_reply_to_status_id=an_id)
+    print(res)
 
 def main():
     while True:
         print("Reading Twitter")
         new_replies = get_replies()
-        for an_id, text, init_image in new_replies:
+        for screen_name, an_id, text, init_image in new_replies:
+            print("calling AWS")
             res_image = get_im2im(an_id, text, init_image)
-            reply_to_twitter(an_id, res_image)
+            print("replying")
+            reply_to_twitter(screen_name, an_id, res_image)
+        sleep(15)
+
+def play2():
+    image =  get_image_from_url('http://pbs.twimg.com/media/FdcsegwWAAYcnas.jpg')
+    # res_image = get_im2im(3, "the moon", image)
+    # res_image.show()
+    reply_to_twitter(1573778431187292163, image)
 
 if __name__ == "__main__":
-    # play()
-    # replies()
+    # pprint(dict(data_dict))
+    # play2()
     main()
