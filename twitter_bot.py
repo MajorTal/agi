@@ -11,6 +11,7 @@ import requests
 import tweepy
 import sagemaker
 from sagemaker.huggingface.model import HuggingFacePredictor
+import botocore
 
 API_KEY = os.getenv("API_KEY")
 API_KEY_SECRET = os.getenv("API_KEY_SECRET")
@@ -31,28 +32,13 @@ ENDPOINT_NAME = 'huggingface-pytorch-inference-2022-09-24-14-34-53-467'
 SESS = sagemaker.Session()
 PREDICTOR = HuggingFacePredictor(endpoint_name=ENDPOINT_NAME, sagemaker_session=SESS)
 
-MY_TWEET_ID = 1573708416224198657
-
-
-def play(url):
-    # res = api.update_status("testing 123") # This works
-
-    fp = TemporaryFile()
-    response = requests.get("https://i.insider.com/5395ae4e69bedd684c95212d?width=600&format=jpeg")
-    image = Image.open(BytesIO(response.content))
-    image.save(fp, "PNG")
-    fp.seek(0)
-
-    res = api.update_status_with_media("testing 1234", 'fake_name.jpg', file=fp)
-    # fp.seek(0)
-    # res = api.update_status_with_media("t2", 'fake_name.jpg', file=fp, in_reply_to_status_id=res.id)
+MY_TWEET_ID = 1573796680666841088
 
 def get_image_from_url(url):
     print("getting image")
     response = requests.get(url)
     image = Image.open(BytesIO(response.content))
     return image
-
 
 
 def get_replies():
@@ -94,17 +80,23 @@ def get_im2im(an_id, text, init_image):
         png_string = out.getvalue()
     init_image = base64.b64encode(png_string).decode("utf-8")
     data = dict(inputs=text, strength=0.75, init_image=init_image)
-    res = PREDICTOR.predict(data=data)
-    imdata = res["image"]
-    image = Image.open(BytesIO(base64.b64decode(imdata)))
-    return image
+    try:
+        res = PREDICTOR.predict(data=data)
+    except PREDICTOR.sagemaker_session.sagemaker_runtime_client.exceptions.ModelError as error:
+    #  botocore.errorfactory.ModelError as error:
+        print(error)
+        res = None
+    else:
+        imdata = res["image"]
+        image = Image.open(BytesIO(base64.b64decode(imdata)))
+        return image
 
 def reply_to_twitter(screen_name, an_id, an_image):
     fp = TemporaryFile()
     an_image.save(fp, "PNG")
     fp.seek(0)
     res = api.update_status_with_media(f"@{screen_name} here you are:", 'fake_name.jpg', file=fp, in_reply_to_status_id=an_id)
-    print(res)
+    # print(res)
 
 def main():
     while True:
@@ -113,8 +105,11 @@ def main():
         for screen_name, an_id, text, init_image in new_replies:
             print("calling AWS")
             res_image = get_im2im(an_id, text, init_image)
-            print("replying")
-            reply_to_twitter(screen_name, an_id, res_image)
+            if res_image:
+                print("replying")
+                reply_to_twitter(screen_name, an_id, res_image)
+            else:
+                print("error from model")
         sleep(15)
 
 def play2():
@@ -124,6 +119,5 @@ def play2():
     reply_to_twitter(1573778431187292163, image)
 
 if __name__ == "__main__":
-    # pprint(dict(data_dict))
-    # play2()
+    # del data_dict["1573932523700248578"]
     main()
