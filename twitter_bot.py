@@ -96,12 +96,14 @@ def get_im2im(text, init_image, strength=0.75):
         image = Image.open(BytesIO(base64.b64decode(imdata)))
         return image
 
-def reply_to_twitter(screen_name, an_id, an_image):
+def reply_to_twitter(screen_name, in_reply_to_status_id, an_image, text=None):
     fp = TemporaryFile()
     an_image.save(fp, "PNG")
     fp.seek(0)
-    res = api.update_status_with_media(f"@{screen_name} here you are:", 'fake_name.jpg', file=fp, in_reply_to_status_id=an_id)
-    # print(res)
+    text = text or f"@{screen_name} here you are:"
+    print("reply to twitter with", text)
+    res = api.update_status_with_media(text, 'fake_name.jpg', file=fp, in_reply_to_status_id=in_reply_to_status_id)
+    return res
 
 def main():
     while True:
@@ -130,7 +132,7 @@ def clean_twitter_profile_image_url(url):
     url = beginning + end
     return url
 
-LIKE_ME_TWIT_ID = 1574731347234390017
+LIKE_ME_TWIT_ID = 1574716421308747776
 
 def get_new_likers(twit_id=LIKE_ME_TWIT_ID):
     pagination_token = None
@@ -142,32 +144,45 @@ def get_new_likers(twit_id=LIKE_ME_TWIT_ID):
         pprint(res.data)
         for user in res.data:
             # print(user.id, user.name, user.username, user.description, user.profile_image_url)
-            user_id_str = f"liker_{twit_id}_{user.id}"
+            user_id_str = f"a_like_{twit_id}_{user.id}"
             if user_id_str not in data_dict:
                 print("new liker", user.id, user.name, user.username, user.description, user.profile_image_url)    
                 new_likers.append(user)
                 data_dict[user_id_str] = True
-            # profile_image_url = user.profile_image_url
-            # profile_image_url = clean_twitter_profile_image_url(profile_image_url)
-            # image =  get_image_from_url(profile_image_url)
-            # image = image.resize((512, 512))
-            # image.show()
-            # new_image = get_im2im("Beautiful, amazing, modern art", image, 0.7)
-            # new_image.show()
         pagination_token = res.meta.get("next_token")
         if not pagination_token:
             break
     return new_likers
 
+def get_current_image(user):
+    profile_image_url = user.profile_image_url
+    profile_image_url = clean_twitter_profile_image_url(profile_image_url)
+    image =  get_image_from_url(profile_image_url).convert("RGB")
+    image = image.resize((512, 512))
+    image.show()
+    return image
+
 def reply_to_liker(reply_to_user, original_twit_id=LIKE_ME_TWIT_ID):
-    print("replying to ", reply_to_user.name)
-    text = f"Hey {reply_to_user.name}: thanks for liking!"
-    api.update_status(text, in_reply_to_status_id=original_twit_id)
+    print("replying to", reply_to_user.name)
+    text = f"Hey {reply_to_user.name}: thanks for liking!\nThis is your current profile image, which I will try to improvise on:"
+    current_image = get_current_image(reply_to_user)
+    screen_name = getattr(reply_to_user, "screen_name", reply_to_user.name) # sometimes it is not there
+    print(screen_name)
+    print(original_twit_id)
+    current_image.show()
+    print(text)
+    res = reply_to_twitter(screen_name, in_reply_to_status_id=original_twit_id, an_image=current_image, text=text)
+    new_image = get_im2im("Beautiful, amazing, modern art", current_image, 0.7)
+    # new_image.show()
+    text = "Improvised image:"
+    res = reply_to_twitter(screen_name, in_reply_to_status_id=res.id, an_image=new_image, text=text)
+    return res
 
 def main_likers():
     new_likers = get_new_likers()
     for user in new_likers:
         reply_to_liker(user)
+        
 
 if __name__ == "__main__":
     # del data_dict["1573940857669042181"]
