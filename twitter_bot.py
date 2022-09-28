@@ -5,6 +5,7 @@ from pprint import pprint
 import shelve
 import os
 from time import sleep
+from tkinter import N
 
 from PIL import Image # pip install --upgrade Pillow
 import requests
@@ -22,7 +23,8 @@ ACCESS_TOKEN_SECRET = os.getenv("ACCESS_TOKEN_SECRET")
 auth = tweepy.OAuthHandler(API_KEY, API_KEY_SECRET)
 auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
 api = tweepy.API(auth)
-
+TWITTER_CLIENT = tweepy.Client(bearer_token = "AAAAAAAAAAAAAAAAAAAAAPi2gwEAAAAACxUT%2B6fCyr3z8jAzDM0thADjfog%3D4M97crBo5Y5Yu9S3PHBiwL6VvYysJIdwaSueODAIlEL9WluY64"
+,access_token=ACCESS_TOKEN, access_token_secret=ACCESS_TOKEN_SECRET,consumer_key=API_KEY, consumer_secret=API_KEY_SECRET)
 data_dict = shelve.open("mentions_dict.pkl")
 
 # AWS:
@@ -33,6 +35,7 @@ SESS = sagemaker.Session()
 PREDICTOR = HuggingFacePredictor(endpoint_name=ENDPOINT_NAME, sagemaker_session=SESS)
 
 MY_TWEET_ID = 1573796680666841088
+MY_USER_ID = 1397303994612080642
 
 def get_image_from_url(url):
     print("getting image")
@@ -41,27 +44,29 @@ def get_image_from_url(url):
     return image
 
 
+SINCE_ID = None
+
 def get_replies():
     # name = "taltimes2"
-    my_user_id = 1397303994612080642
+    global SINCE_ID
     new_replies = []
-    res = api.mentions_timeline()
-    for t in res:
+    res = api.mentions_timeline(count=20, since_id=SINCE_ID)
+    for t in reversed(res):
+        SINCE_ID = t.id
         name = t.user.name
-        # print(f"mention by {name}")
         # print("follows me?", friendship)
         # print(t.text)
         # print()
         if t.in_reply_to_status_id == MY_TWEET_ID:
-            # print("reply")
+            print(f"replied by {name}")
             reply_id = str(t.id)
             if reply_id not in data_dict:
                 print("New!")
-                friendship = api.get_friendship(source_id=t.user.id, target_id=my_user_id)[0]
+                friendship = api.get_friendship(source_id=t.user.id, target_id=MY_USER_ID)[0]
                 following = friendship.following
                 if not following:
                     print("not following", t.user.screen_name)
-                    break
+                    continue
                 data_dict[reply_id] = True
                 if t.entities:
                     media = t.entities.get("media", [])
@@ -69,7 +74,7 @@ def get_replies():
                         if med['type'] == 'photo': # has picture
                             media_url = med["media_url"]
                             print(f"{t.id=}  {media_url=}")
-                            image =  get_image_from_url(media_url)
+                            image =  get_image_from_url(media_url).convert("RGB")
                             new_replies.append((t.user.screen_name, t.id, t.text, image))
                             break
     return new_replies
@@ -118,6 +123,23 @@ def play2():
     # res_image.show()
     reply_to_twitter(1573778431187292163, image)
 
+
+def get_likes():
+    LIKE_ME = 1574731347234390017
+    pagination_token = None
+    while True:
+        res = TWITTER_CLIENT.get_liking_users(LIKE_ME, max_results=3, pagination_token=pagination_token, user_fields="profile_image_url,description")
+        if not res.data:
+            break
+        pprint(res.data)
+        for user in res.data:
+            print(user.id, user.name, user.username, user.description, user.profile_image_url)
+        # print(res.meta)
+        pagination_token = res.meta.get("next_token")
+        if not pagination_token:
+            break
+
 if __name__ == "__main__":
-    # del data_dict["1573932523700248578"]
-    main()
+    # del data_dict["1573940857669042181"]
+    # main()
+    get_likes()
