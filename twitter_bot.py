@@ -130,28 +130,46 @@ def clean_twitter_profile_image_url(url):
     url = beginning + end
     return url
 
-def get_new_likes():
-    LIKE_ME = 1574731347234390017
+LIKE_ME_TWIT_ID = 1574731347234390017
+
+def get_new_likers(twit_id=LIKE_ME_TWIT_ID):
     pagination_token = None
+    new_likers = []
     while True:
-        res = TWITTER_CLIENT.get_liking_users(LIKE_ME, max_results=3, pagination_token=pagination_token, user_fields="profile_image_url,description")
+        res = TWITTER_CLIENT.get_liking_users(twit_id, max_results=3, pagination_token=pagination_token, user_fields="profile_image_url,description")
         if not res.data:
             break
         pprint(res.data)
         for user in res.data:
-            print(user.id, user.name, user.username, user.description, user.profile_image_url)
-            profile_image_url = user.profile_image_url
-            profile_image_url = clean_twitter_profile_image_url(profile_image_url)
-            image =  get_image_from_url(profile_image_url)
-            image = image.resize((512, 512))
-            image.show()
-            new_image = get_im2im("Beautiful, amazing, modern art", image, 0.7)
-            new_image.show()
+            # print(user.id, user.name, user.username, user.description, user.profile_image_url)
+            user_id_str = f"liker_{twit_id}_{user.id}"
+            if user_id_str not in data_dict:
+                print("new liker", user.id, user.name, user.username, user.description, user.profile_image_url)    
+                new_likers.append(user)
+                data_dict[user_id_str] = True
+            # profile_image_url = user.profile_image_url
+            # profile_image_url = clean_twitter_profile_image_url(profile_image_url)
+            # image =  get_image_from_url(profile_image_url)
+            # image = image.resize((512, 512))
+            # image.show()
+            # new_image = get_im2im("Beautiful, amazing, modern art", image, 0.7)
+            # new_image.show()
         pagination_token = res.meta.get("next_token")
         if not pagination_token:
             break
+    return new_likers
+
+def reply_to_liker(reply_to_user, original_twit_id=LIKE_ME_TWIT_ID):
+    print("replying to ", reply_to_user.name)
+    text = f"Hey {reply_to_user.name}: thanks for liking!"
+    api.update_status(text, in_reply_to_status_id=original_twit_id)
+
+def main_likers():
+    new_likers = get_new_likers()
+    for user in new_likers:
+        reply_to_liker(user)
 
 if __name__ == "__main__":
     # del data_dict["1573940857669042181"]
     # main()
-    get_new_likes()
+    main_likers()
