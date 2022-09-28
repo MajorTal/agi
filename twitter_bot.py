@@ -14,21 +14,23 @@ import sagemaker
 from sagemaker.huggingface.model import HuggingFacePredictor
 import botocore
 
+# Twitter auth:
 API_KEY = os.getenv("API_KEY")
 API_KEY_SECRET = os.getenv("API_KEY_SECRET")
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 ACCESS_TOKEN_SECRET = os.getenv("ACCESS_TOKEN_SECRET")
 BEARER_TOKEN = os.getenv("BEARER_TOKEN")
 
-# This works!!!
 auth = tweepy.OAuthHandler(API_KEY, API_KEY_SECRET)
 auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
 
-api = tweepy.API(auth)
-TWITTER_CLIENT = tweepy.Client(bearer_token=BEARER_TOKEN, access_token=ACCESS_TOKEN, access_token_secret=ACCESS_TOKEN_SECRET,consumer_key=API_KEY, consumer_secret=API_KEY_SECRET)
+api = tweepy.API(auth) # API version 1
+TWITTER_CLIENT = tweepy.Client(bearer_token=BEARER_TOKEN, access_token=ACCESS_TOKEN, access_token_secret=ACCESS_TOKEN_SECRET,consumer_key=API_KEY,
+                               consumer_secret=API_KEY_SECRET) # API version 2
+
 data_dict = shelve.open("mentions_dict.pkl")
 
-# AWS:
+# AWS auth:
 AWS_ACCESS_KEY_ID = os.getenv("aws_access_key_id")
 AWS_SECRET_ACCESS_KEY = os.getenv("aws_secret_access_key")
 ENDPOINT_NAME = 'huggingface-pytorch-inference-2022-09-24-14-34-53-467'
@@ -55,9 +57,6 @@ def get_replies():
     for t in reversed(res):
         SINCE_ID = t.id
         name = t.user.name
-        # print("follows me?", friendship)
-        # print(t.text)
-        # print()
         if t.in_reply_to_status_id == MY_TWEET_ID:
             print(f"replied by {name}")
             reply_id = str(t.id)
@@ -80,12 +79,12 @@ def get_replies():
                             break
     return new_replies
 
-def get_im2im(an_id, text, init_image):
+def get_im2im(text, init_image, strength=0.75):
     with BytesIO() as out:
         init_image.save(out, format="PNG")
         png_string = out.getvalue()
     init_image = base64.b64encode(png_string).decode("utf-8")
-    data = dict(inputs=text, strength=0.75, init_image=init_image)
+    data = dict(inputs=text, strength=strength, init_image=init_image)
     try:
         res = PREDICTOR.predict(data=data)
     except PREDICTOR.sagemaker_session.sagemaker_runtime_client.exceptions.ModelError as error:
@@ -110,7 +109,7 @@ def main():
         new_replies = get_replies()
         for screen_name, an_id, text, init_image in new_replies:
             print("calling AWS")
-            res_image = get_im2im(an_id, text, init_image)
+            res_image = get_im2im(text, init_image)
             if res_image:
                 print("replying")
                 reply_to_twitter(screen_name, an_id, res_image)
@@ -124,8 +123,14 @@ def play2():
     # res_image.show()
     reply_to_twitter(1573778431187292163, image)
 
+def clean_twitter_profile_image_url(url):
+    """ Example url = "https://pbs.twimg.com/profile_images/1331709417130233861/Ip3RQ-Mr_normal.jpg" """
+    beginning, end = url[:url.rfind(".")], url[url.rfind("."):]
+    beginning = beginning[:beginning.rfind("_")] # https://developer.twitter.com/en/docs/twitter-api/v1/accounts-and-users/user-profile-images-and-banners
+    url = beginning + end
+    return url
 
-def get_likes():
+def get_new_likes():
     LIKE_ME = 1574731347234390017
     pagination_token = None
     while True:
@@ -135,7 +140,13 @@ def get_likes():
         pprint(res.data)
         for user in res.data:
             print(user.id, user.name, user.username, user.description, user.profile_image_url)
-        # print(res.meta)
+            profile_image_url = user.profile_image_url
+            profile_image_url = clean_twitter_profile_image_url(profile_image_url)
+            image =  get_image_from_url(profile_image_url)
+            image = image.resize((512, 512))
+            image.show()
+            new_image = get_im2im("Beautiful, amazing, modern art", image, 0.7)
+            new_image.show()
         pagination_token = res.meta.get("next_token")
         if not pagination_token:
             break
@@ -143,4 +154,4 @@ def get_likes():
 if __name__ == "__main__":
     # del data_dict["1573940857669042181"]
     # main()
-    get_likes()
+    get_new_likes()
