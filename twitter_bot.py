@@ -5,14 +5,12 @@ from pprint import pprint
 import shelve
 import os
 from time import sleep
-from tkinter import N
 
 from PIL import Image # pip install --upgrade Pillow
 import requests
 import tweepy
 import sagemaker
 from sagemaker.huggingface.model import HuggingFacePredictor
-import botocore
 
 # Twitter auth:
 API_KEY = os.getenv("API_KEY")
@@ -162,20 +160,19 @@ def get_current_image(user):
     profile_image_url = clean_twitter_profile_image_url(profile_image_url)
     image =  get_image_from_url(profile_image_url).convert("RGB")
     image = image.resize((512, 512))
-    image.show()
+    # image.show()
     return image
 
 def reply_to_liker(reply_to_user, original_twit_id=LIKE_ME_TWIT_ID):
     print("replying to", reply_to_user.name)
-    text = f"Hey {reply_to_user.name}: thanks for liking!\nThis is your current profile image, which I will try to improvise on:"
     current_image = get_current_image(reply_to_user)
-    screen_name = getattr(reply_to_user, "screen_name", reply_to_user.name) # sometimes it is not there
-    print(text)
-    res = reply_to_twitter(screen_name, in_reply_to_status_id=original_twit_id, an_image=current_image, text=text)
+    current_image.show()
     new_image = get_im2im("Beautiful, amazing, modern art", current_image, 0.7)
     new_image.show()
-    text = "Improvised image:"
-    res = reply_to_twitter(screen_name, in_reply_to_status_id=res.id, an_image=new_image, text=text)
+    media_list = upload_images((current_image, new_image))
+    text = f"@{reply_to_user.username} Hey {reply_to_user.name}: thanks for liking!\nThis is your current profile image, and my improvisation:"
+    print(text)
+    res = api.update_status(text, media_ids=[media.media_id for media in media_list], in_reply_to_status_id=original_twit_id)    
     return res
 
 def main_likers():
@@ -183,7 +180,7 @@ def main_likers():
         new_likers = get_new_likers()
         for user in new_likers:
             reply_to_liker(user)
-        sleep(30)        
+            sleep(10)        
 
 
 def upload_images(list_of_images):
@@ -206,6 +203,12 @@ def play_w_media_list():
 if __name__ == "__main__":
     # del data_dict["1573940857669042181"]
     # main()
-    # main_likers()
-    play_w_media_list()
+    main_likers()
+    # play_w_media_list()
+    # twit_id=LIKE_ME_TWIT_ID
+    # res = TWITTER_CLIENT.get_liking_users(twit_id, max_results=100, pagination_token=None, user_fields="profile_image_url,description")
+    # for user in res.data:
+    #     screen_name = getattr(user, "screen_name", None) # sometimes it is not there
+ 
+    #     print(user.name, user.username, screen_name)
 
