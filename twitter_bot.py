@@ -132,6 +132,9 @@ def clean_twitter_profile_image_url(url):
     return url
 
 
+def get_liker_string_for_db(twit_id, user_id):
+    return f"alike_{twit_id}_{user_id}"
+
 def get_new_likers(twit_id=LIKE_ME_TWIT_ID):
     pagination_token = None
     new_likers = []
@@ -145,8 +148,8 @@ def get_new_likers(twit_id=LIKE_ME_TWIT_ID):
         pprint(res.data)
         for user in res.data:
             # print(user.id, user.name, user.username, user.description, user.profile_image_url)
-            user_id_str = f"a_like_{twit_id}_{user.id}"
-            if user_id_str not in data_dict:
+            user_id_str = get_liker_string_for_db(twit_id, user.id)
+            if user_id_str not in data_dict or data_dict[user_id_str] == True:
                 print("new liker", user.id, user.name, user.username, user.description, user.profile_image_url)    
                 new_likers.append(user)
                 data_dict[user_id_str] = True
@@ -172,7 +175,9 @@ def reply_to_liker(reply_to_user, original_twit_id=LIKE_ME_TWIT_ID):
     media_list = upload_images((current_image, new_image))
     text = f"@{reply_to_user.username} Hey {reply_to_user.name}: thanks for liking!\nThis is your current profile image, and my improvisation:"
     print(text)
-    res = api.update_status(text, media_ids=[media.media_id for media in media_list], in_reply_to_status_id=original_twit_id)    
+    res = api.update_status(text, media_ids=[media.media_id for media in media_list], in_reply_to_status_id=original_twit_id)  
+    user_id_str = get_liker_string_for_db(original_twit_id, reply_to_user.id)
+    data_dict[user_id_str] = False  
     return res
 
 def main_likers():
@@ -180,7 +185,7 @@ def main_likers():
         new_likers = get_new_likers()
         for user in new_likers:
             reply_to_liker(user)
-            sleep(10)        
+            sleep(30) # Very slow...
 
 
 def upload_images(list_of_images):
@@ -204,11 +209,4 @@ if __name__ == "__main__":
     # del data_dict["1573940857669042181"]
     # main()
     main_likers()
-    # play_w_media_list()
-    # twit_id=LIKE_ME_TWIT_ID
-    # res = TWITTER_CLIENT.get_liking_users(twit_id, max_results=100, pagination_token=None, user_fields="profile_image_url,description")
-    # for user in res.data:
-    #     screen_name = getattr(user, "screen_name", None) # sometimes it is not there
- 
-    #     print(user.name, user.username, screen_name)
-
+    # print(os.getenv("HELLO"))
