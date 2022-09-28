@@ -39,6 +39,7 @@ PREDICTOR = HuggingFacePredictor(endpoint_name=ENDPOINT_NAME, sagemaker_session=
 
 MY_TWEET_ID = 1573796680666841088
 MY_USER_ID = 1397303994612080642
+LIKE_ME_TWIT_ID = 1575107533832089600
 
 def get_image_from_url(url):
     print("getting image")
@@ -132,13 +133,15 @@ def clean_twitter_profile_image_url(url):
     url = beginning + end
     return url
 
-LIKE_ME_TWIT_ID = 1574716421308747776
 
 def get_new_likers(twit_id=LIKE_ME_TWIT_ID):
     pagination_token = None
     new_likers = []
     while True:
-        res = TWITTER_CLIENT.get_liking_users(twit_id, max_results=3, pagination_token=pagination_token, user_fields="profile_image_url,description")
+        try:
+            res = TWITTER_CLIENT.get_liking_users(twit_id, max_results=100, pagination_token=pagination_token, user_fields="profile_image_url,description")
+        except tweepy.errors.TooManyRequests:
+            sleep(100)
         if not res.data:
             break
         pprint(res.data)
@@ -173,16 +176,17 @@ def reply_to_liker(reply_to_user, original_twit_id=LIKE_ME_TWIT_ID):
     print(text)
     res = reply_to_twitter(screen_name, in_reply_to_status_id=original_twit_id, an_image=current_image, text=text)
     new_image = get_im2im("Beautiful, amazing, modern art", current_image, 0.7)
-    # new_image.show()
+    new_image.show()
     text = "Improvised image:"
     res = reply_to_twitter(screen_name, in_reply_to_status_id=res.id, an_image=new_image, text=text)
     return res
 
 def main_likers():
-    new_likers = get_new_likers()
-    for user in new_likers:
-        reply_to_liker(user)
-        
+    while True:
+        new_likers = get_new_likers()
+        for user in new_likers:
+            reply_to_liker(user)
+        sleep(30)        
 
 if __name__ == "__main__":
     # del data_dict["1573940857669042181"]
