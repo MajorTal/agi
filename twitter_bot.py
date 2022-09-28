@@ -170,9 +170,6 @@ def reply_to_liker(reply_to_user, original_twit_id=LIKE_ME_TWIT_ID):
     text = f"Hey {reply_to_user.name}: thanks for liking!\nThis is your current profile image, which I will try to improvise on:"
     current_image = get_current_image(reply_to_user)
     screen_name = getattr(reply_to_user, "screen_name", reply_to_user.name) # sometimes it is not there
-    print(screen_name)
-    print(original_twit_id)
-    current_image.show()
     print(text)
     res = reply_to_twitter(screen_name, in_reply_to_status_id=original_twit_id, an_image=current_image, text=text)
     new_image = get_im2im("Beautiful, amazing, modern art", current_image, 0.7)
@@ -188,7 +185,27 @@ def main_likers():
             reply_to_liker(user)
         sleep(30)        
 
+
+def upload_images(list_of_images):
+    media_list = []
+    for image in list_of_images:
+        fp = TemporaryFile()
+        image.save(fp, "PNG")
+        fp.seek(0)
+        media = api.simple_upload("ignore.png", file=fp)
+        media_list.append(media)
+    return media_list
+
+def play_w_media_list():
+    image1 = get_image_from_url("https://st3.depositphotos.com/3047333/12924/i/600/depositphotos_129246006-stock-photo-kitten-sitting-in-flowers.jpg")
+    image2 = get_image_from_url("https://st2.depositphotos.com/4341251/6620/i/600/depositphotos_66205515-stock-photo-beautiful-flowers-background.jpg")
+    media_list = upload_images((image1, image2))
+    res = api.update_status("testing 123", media_ids=[media.media_id for media in media_list])
+    print(res)
+
 if __name__ == "__main__":
     # del data_dict["1573940857669042181"]
     # main()
-    main_likers()
+    # main_likers()
+    play_w_media_list()
+
