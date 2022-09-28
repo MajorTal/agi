@@ -138,7 +138,7 @@ def get_liker_string_for_db(twit_id, user_id):
 def get_new_likers(twit_id=LIKE_ME_TWIT_ID):
     pagination_token = None
     new_likers = []
-    while True:
+    while len(new_likers) < 10:
         try:
             res = TWITTER_CLIENT.get_liking_users(twit_id, max_results=100, pagination_token=pagination_token, user_fields="profile_image_url,description")
         except tweepy.errors.TooManyRequests:
@@ -153,6 +153,8 @@ def get_new_likers(twit_id=LIKE_ME_TWIT_ID):
                 print("new liker", user.id, user.name, user.username, user.description, user.profile_image_url)    
                 new_likers.append(user)
                 data_dict[user_id_str] = True
+                if len(new_likers) >= 10:
+                    break
         pagination_token = res.meta.get("next_token")
         if not pagination_token:
             break
@@ -169,11 +171,12 @@ def get_current_image(user):
 def reply_to_liker(reply_to_user, original_twit_id=LIKE_ME_TWIT_ID):
     print("replying to", reply_to_user.name)
     current_image = get_current_image(reply_to_user)
-    current_image.show()
+    # current_image.show()
     new_image = get_im2im("Beautiful, amazing, modern art", current_image, 0.7)
-    new_image.show()
+    # new_image.show()
     media_list = upload_images((current_image, new_image))
-    text = f"@{reply_to_user.username} Hey {reply_to_user.name}: thanks for liking!\nThis is your current profile image, and my improvisation:"
+    # text = f"@{reply_to_user.username} Hey {reply_to_user.name}: thanks for liking!\nThis is your current profile image, and my improvisation:"
+    text = f"Hey {reply_to_user.name}: thanks for liking!\nThis is your current profile image, and my improvisation:"
     print(text)
     res = api.update_status(text, media_ids=[media.media_id for media in media_list], in_reply_to_status_id=original_twit_id)  
     user_id_str = get_liker_string_for_db(original_twit_id, reply_to_user.id)
@@ -185,7 +188,7 @@ def main_likers():
         new_likers = get_new_likers()
         for user in new_likers:
             reply_to_liker(user)
-            sleep(30) # Very slow...
+            sleep(36) # Very slow...
 
 
 def upload_images(list_of_images):
