@@ -173,15 +173,16 @@ def reply_to_liker(reply_to_user, original_twit_id=LIKE_ME_TWIT_ID):
     current_image = get_current_image(reply_to_user)
     # current_image.show()
     new_image = get_im2im("Beautiful, amazing, modern art", current_image, 0.7)
-    # new_image.show()
-    media_list = upload_images((current_image, new_image))
-    # text = f"@{reply_to_user.username} Hey {reply_to_user.name}: thanks for liking!\nThis is your current profile image, and my improvisation:"
-    text = f"Hey {reply_to_user.name}: thanks for liking!\nThis is your current profile image, and my improvisation:"
-    print(text)
-    res = api.update_status(text, media_ids=[media.media_id for media in media_list], in_reply_to_status_id=original_twit_id)  
-    user_id_str = get_liker_string_for_db(original_twit_id, reply_to_user.id)
-    data_dict[user_id_str] = False  
-    return res
+    if sum(new_image.convert("L").getextrema()) not in (0, 2): # All black or all white
+        # new_image.show()
+        media_list = upload_images((current_image, new_image))
+        # text = f"@{reply_to_user.username} Hey {reply_to_user.name}: thanks for liking!\nThis is your current profile image, and my improvisation:"
+        text = f"Hey {reply_to_user.name}: thanks for liking!\nThis is your current profile image, and my improvisation:"
+        print(text)
+        res = api.update_status(text, media_ids=[media.media_id for media in media_list], in_reply_to_status_id=original_twit_id)  
+        user_id_str = get_liker_string_for_db(original_twit_id, reply_to_user.id)
+        data_dict[user_id_str] = False  
+        return res
 
 def main_likers():
     while True:
