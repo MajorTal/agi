@@ -111,7 +111,7 @@ def main():
         for screen_name, an_id, text, init_image in new_replies:
             print("calling AWS")
             res_image = get_im2im(text, init_image)
-            if res_image:
+            if res_image and sum(res_image.convert("L").getextrema()) not in (0, 2): # All black or all white
                 print("replying")
                 reply_to_twitter(screen_name, an_id, res_image)
             else:
