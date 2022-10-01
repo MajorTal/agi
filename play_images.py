@@ -73,6 +73,7 @@ WIDTH = 3
 HEIGHT = 3
 OPTIMAL_WIDTH = 1600 # 900 # 1600
 OPTIMAL_HEIGHT = 1600
+NSFW_TRIES = 10 # Number of tries to fight the NSFW filter
 def zombie_users():
     """
     I can variable size the text using https://stackoverflow.com/a/4902713
@@ -83,11 +84,14 @@ def zombie_users():
     user_index = 0
     new_dim = min((OPTIMAL_WIDTH // WIDTH), (OPTIMAL_HEIGHT // HEIGHT))
     dst = Image.new('RGB', (new_dim*WIDTH*2, new_dim*HEIGHT))
-    for width in range(WIDTH):
-        for height in range(HEIGHT):
+    for height in range(HEIGHT):
+        for width in range(WIDTH):
             user = new_likers[user_index]
             image = get_current_image(user).resize((new_dim, new_dim))
-            new_image = get_im2im(ZOMBIE_TEXT, image, ZOMBIE_STRENTH).resize((new_dim, new_dim))
+            for nsfw_try in range(NSFW_TRIES):
+                new_image = get_im2im(ZOMBIE_TEXT, image, ZOMBIE_STRENTH).resize((new_dim, new_dim))
+                if new_image and sum(new_image.convert("L").getextrema()) not in (0, 2): # All black or all white
+                    break
             draw = ImageDraw.Draw(image) # Call draw Method to add 2D graphics in an image
             text = f"{user.name}\n@{user.username}"
             draw.text((28, 36), text, font=my_font, fill=(10, 10, 10))
