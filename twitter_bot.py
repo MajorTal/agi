@@ -135,10 +135,10 @@ def clean_twitter_profile_image_url(url):
 def get_liker_string_for_db(twit_id, user_id):
     return f"alike_{twit_id}_{user_id}"
 
-def get_new_likers(twit_id=LIKE_ME_TWIT_ID):
+def get_new_likers(twit_id=LIKE_ME_TWIT_ID, how_many_to_Get=10):
     pagination_token = None
     new_likers = []
-    while len(new_likers) < 10:
+    while len(new_likers) < how_many_to_Get:
         try:
             res = TWITTER_CLIENT.get_liking_users(twit_id, max_results=100, pagination_token=pagination_token, user_fields="profile_image_url,description")
         except tweepy.errors.TooManyRequests:
@@ -150,10 +150,10 @@ def get_new_likers(twit_id=LIKE_ME_TWIT_ID):
             # print(user.id, user.name, user.username, user.description, user.profile_image_url)
             user_id_str = get_liker_string_for_db(twit_id, user.id)
             if user_id_str not in data_dict or data_dict[user_id_str] == True:
-                print("new liker", user.id, user.name, user.username, user.description, user.profile_image_url)    
+                print("new liker", user.id, user.name, user.username) #, user.description, user.profile_image_url)    
                 new_likers.append(user)
                 data_dict[user_id_str] = True
-                if len(new_likers) >= 10:
+                if len(new_likers) >= how_many_to_Get:
                     break
         pagination_token = res.meta.get("next_token")
         if not pagination_token:
@@ -191,7 +191,7 @@ def main_likers():
         new_likers = get_new_likers()
         for user in new_likers:
             reply_to_liker(user)
-            sleep(36) # Very slow...
+            # sleep(36) # Very slow...
 
 
 def upload_images(list_of_images):
