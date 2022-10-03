@@ -65,9 +65,10 @@ def upload_image_to_s3(image, bucket=BUCKET_ZOMBIES, prefix="zombies-"):
     res = S3_CLIENT.upload_fileobj(
         in_mem_file, # This is what i am trying to upload
         bucket,
-        # "hi.png",
         prefix+image.filename,
-        # ExtraArgs={'ACL': 'public-read'}
+        ExtraArgs={
+            # 'ACL': 'public-read', # Not needed - set at the bucket level
+            "ContentType": "image/png"}
     )
     return res
 
@@ -90,7 +91,7 @@ def zombie_user(screen_name):
 
 
 
-WIDTH = 3
+WIDTH = 2
 HEIGHT = 3
 OPTIMAL_WIDTH = 1600 # 900 # 1600
 OPTIMAL_HEIGHT = 1600
@@ -108,22 +109,27 @@ def zombie_users():
     for height in range(HEIGHT):
         for width in range(WIDTH):
             user = new_likers[user_index]
-            image = get_current_image(user).resize((new_dim, new_dim))
-            image.filename = f"{user.username}.png"
-            for nsfw_try in range(NSFW_TRIES):
-                new_image = get_im2im(ZOMBIE_TEXT, image, ZOMBIE_STRENTH).resize((new_dim, new_dim))
+            dst_per_user = Image.new('RGB', (1024, 512))
+            image = get_current_image(user)
+            dst_per_user.filename = f"{user.username}.png"
+            for _nsfw_try in range(NSFW_TRIES):
+                new_image = get_im2im(ZOMBIE_TEXT, image, ZOMBIE_STRENTH)
                 if new_image and sum(new_image.convert("L").getextrema()) not in (0, 2): # All black or all white
-                    new_image.filename = f"{user.username}-zombie.png"
                     break
-            draw = ImageDraw.Draw(image) # Call draw Method to add 2D graphics in an image
+            image = image.resize((512, 512))
+            draw = ImageDraw.Draw(image)
             text = f"{user.name}\n@{user.username}"
             draw.text((28, 36), text, font=my_font, fill=(10, 10, 10))
+            dst_per_user.paste(image, (0, 0))
+            image = image.resize((new_dim, new_dim))
             dst.paste(image, (new_dim*2*width, new_dim*height))
-            upload_image_to_s3(image)
             if new_image:
+                new_image = new_image.resize((512, 512))
+                dst_per_user.paste(new_image, (512, 0))
+                new_image = new_image.resize((new_dim, new_dim))
                 dst.paste(new_image, (new_dim*(2*width+1), new_dim*height))
-                upload_image_to_s3(new_image)
             user_index = user_index + 1
+            upload_image_to_s3(dst_per_user)
     dst.show()
 
 
