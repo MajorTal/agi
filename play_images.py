@@ -58,7 +58,7 @@ def play_w_user(user):
 def upload_image_to_s3(image, bucket=BUCKET_ZOMBIES, prefix="zombies-"):
     # Save the image to an in-memory file
     in_mem_file = io.BytesIO()
-    image.save(in_mem_file, format=image.format)
+    image.save(in_mem_file, format=image.format or "png")
     in_mem_file.seek(0)
 
     # Upload image to s3
@@ -119,15 +119,17 @@ def zombie_users():
             text = f"{user.name}\n@{user.username}"
             draw.text((28, 36), text, font=my_font, fill=(10, 10, 10))
             dst.paste(image, (new_dim*2*width, new_dim*height))
+            upload_image_to_s3(image)
             if new_image:
                 dst.paste(new_image, (new_dim*(2*width+1), new_dim*height))
+                upload_image_to_s3(new_image)
             user_index = user_index + 1
     dst.show()
 
 
 
 if __name__ == "__main__":
-    zombie_user("@MeytalinkaVan")
-    # zombie_users()
+    # zombie_user("@MeytalinkaVan")
+    zombie_users()
     # @GSKenigsfield")
     # create_bucket(BUCKET_ZOMBIES)
