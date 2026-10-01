@@ -5,15 +5,13 @@ import io
 from PIL import Image, ImageDraw, ImageFont
 from twitter_bot import get_im2im, LIKE_ME_TWIT_ID, get_liker_string_for_db, data_dict, api, reply_to_liker, get_current_image, get_new_likers
 import replicate
-import boto3
+
+from aws_private import SESSION
 
 
 BUCKET_ZOMBIES = "tal-private-zombie"
 
-AWS_SESSION = boto3.Session(aws_access_key_id=os.getenv("THE_BOT_AWS_ACCESS_KEY_ID"),
-                            aws_secret_access_key=os.getenv("THE_BOT_AWS_SECRET_ACCESS_KEY"),
-                            region_name=os.getenv("AWS_DEFAULT_REGION"))
-S3_CLIENT = AWS_SESSION.client('s3')
+S3_CLIENT = SESSION.client('s3')
 
 ZOMBIE_TEXT = "hyper realistic portrait zombie cinematic, 7 days to die zombie, horror, blood, dirt, expression,"\
               " award winning, intricate, sharp focus, cinematic lighting, rimlight, 8 k concept art, art by z. w. gu, brom, michael hussar,"\

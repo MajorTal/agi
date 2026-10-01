@@ -12,12 +12,14 @@ import tweepy
 import sagemaker
 from sagemaker.huggingface.model import HuggingFacePredictor
 
+from aws_private import SESSION, secret
+
 # Twitter auth:
-API_KEY = os.getenv("API_KEY")
-API_KEY_SECRET = os.getenv("API_KEY_SECRET")
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
-ACCESS_TOKEN_SECRET = os.getenv("ACCESS_TOKEN_SECRET")
-BEARER_TOKEN = os.getenv("BEARER_TOKEN")
+API_KEY = secret("API_KEY", "twitter-api-key")
+API_KEY_SECRET = secret("API_KEY_SECRET", "twitter-api-key-secret")
+ACCESS_TOKEN = secret("ACCESS_TOKEN", "twitter-access-token")
+ACCESS_TOKEN_SECRET = secret("ACCESS_TOKEN_SECRET", "twitter-access-token-secret")
+BEARER_TOKEN = secret("BEARER_TOKEN", "twitter-bearer-token")
 
 auth = tweepy.OAuthHandler(API_KEY, API_KEY_SECRET)
 auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
@@ -28,11 +30,9 @@ TWITTER_CLIENT = tweepy.Client(bearer_token=BEARER_TOKEN, access_token=ACCESS_TO
 
 data_dict = shelve.open("mentions_dict.pkl")
 
-# AWS auth:
-AWS_ACCESS_KEY_ID = os.getenv("aws_access_key_id")
-AWS_SECRET_ACCESS_KEY = os.getenv("aws_secret_access_key")
+# AWS (SageMaker) through the `private` profile:
 ENDPOINT_NAME = 'huggingface-pytorch-inference-2022-09-24-14-34-53-467'
-SESS = sagemaker.Session()
+SESS = sagemaker.Session(boto_session=SESSION)
 PREDICTOR = HuggingFacePredictor(endpoint_name=ENDPOINT_NAME, sagemaker_session=SESS)
 
 MY_TWEET_ID = 1573796680666841088

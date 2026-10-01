@@ -2,8 +2,10 @@ import os
 
 import openai
 
+from aws_private import secret
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+
+openai.api_key = secret("OPENAI_API_KEY", "openai-api-key")
 assert openai.api_key
 
 

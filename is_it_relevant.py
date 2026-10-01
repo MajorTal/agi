@@ -5,7 +5,9 @@ import os
 # 3rd party imports:
 import openai
 
-openai.api_key = os.getenv("OPENAI_API_KEY") # I have an ".env" file
+from aws_private import secret
+
+openai.api_key = secret("OPENAI_API_KEY", "openai-api-key")
 
 
 # Does it answer the question?
